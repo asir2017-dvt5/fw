@@ -28,6 +28,7 @@ case "$1" in
 	iptables -A FORWARD -i $DMZ_IFACE -p ICMP -o $WAN_IFACE -j ACCEPT
 	iptables -A INPUT -p tcp -s 192.168.118.0/24 --dport 2222 -j ACCEPT
 	iptables -A INPUT -p tcp -s 172.20.118.0/24 --dport 2222 -j ACCEPT
+	iptables -A INPUT -p tcp -d 10.3.4.139 --dport 2222 -j ACCEPT
 	iptables -A FORWARD -i $WAN_IFACE -p tcp -o $DMZ_IFACE --dport22 -j ACCEPT
 	iptables -t nat -A POSTROUTING -o $WAN_IFACE -j MASQUERADE
 	iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
