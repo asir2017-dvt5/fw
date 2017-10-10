@@ -4,6 +4,8 @@
 
 #vars
 WAN_IFACE="eth0"
+LAN_IFACE="eth1"
+DMZ_IFACE="eth2"
 
 case "$1" in
  start)
@@ -11,13 +13,40 @@ case "$1" in
 	echo "1" > /proc/sys/net/ipv4/ip_forward
 	iptables -t nat -F POSTROUTING
 	iptables -F FORWARD
+	iptables -F INPUT
+	iptables -F OUTPUT
+	iptables -P INPUT DROP
+	iptables -P OUTPUT DROP
+	iptables -P FORWARD DROP
 	iptables -A FORWARD -o $WAN_IFACE -j ACCEPT
+	iptables -A FORWARD -i $LAN_IFACE -o $DMZ_IFACE -j ACCEPT
+	iptables -A FORWARD -i $DMZ_IFACE -o $LAN_IFACE -j ACCEPT
+	iptables -A FORWARD -i $LAN_IFACE -o $WAN_IFACE -j ACCEPT
+	iptables -A FORWARD -i $WAN_IFACE -o $LAN_IFACE -j ACCEPT
+	iptables -A FORWARD -i $DMZ_IFACE -p icmp -o $LAN_IFACE -j ACCEPT
+	iptables -A FORWARD -i $LAN_IFACE -p icmp -o $DMZ_IFACE -j ACCEPT
+	iptables -A FORWARD -i $DMZ_IFACE -p udp -o $WAN_IFACE --dport 53 -j ACCEPT
+	iptables -A FORWARD -i $WAN_IFACE -p udp -o $DMZ_IFACE --sport 53 -j ACCEPT
+	iptables -A FORWARD -i $DMZ_IFACE -p tcp -o $WAN_IFACE --dport 80 -j ACCEPT
+	iptables -A FORWARD -i $WAN_IFACE -p tcp -o $DMZ_IFACE --sport 80 -j ACCEPT
+	iptables -A FORWARD -i $DMZ_IFACE -p tcp -o $WAN_IFACE --dport 443 -j ACCEPT
+	iptables -A FORWARD -i $WAN_IFACE -p tcp -o $DMZ_IFACE --sport 443 -j ACCEPT
+	iptables -A FORWARD -i $DMZ_IFACE -p ICMP -o $WAN_IFACE -j ACCEPT
+	iptables -A FORWARD -i $WAN_IFACE -p ICMP -o $DMZ_IFACE -j ACCEPT
+	iptables -A OUTPUT -p tcp -d 192.168.118.0/24 --sport2222 -j ACCEPT
+	iptables -A INPUT -p tcp -s 192.168.118.0/24 --dport2222 -j ACCEPT
+	iptables -A OUTPUT -p tcp -d 172.20.118.0/24 --sport2222 -j ACCEPT
+	iptables -A INPUT -p tcp -s 172.20.118.0/24 --dport2222 -j ACCEPT
+	iptables -A FORWARD -i $DMZ_IFACE -p tcp -o $WAN_IFACE --sport22 -j ACCEPT
+	iptables -A FORWARD -i $WAN_IFACE -p tcp -o $DMZ_IFACE --dport22 -j ACCEPT
 	iptables -t nat -A POSTROUTING -o $WAN_IFACE -j MASQUERADE
  	;;
  stop)
 	echo "Stopping FW"
 	iptables -t nat -F POSTROUTING
 	iptables -F FORWARD
+	iptables -F INPUT
+	iptables -F OUTPUT
 	;;
  restart|reload)
 	$0 stop
